@@ -23,8 +23,8 @@ type ErrorResponse struct {
 
 // ArticleInfo は、記事情報を定義した構造体。
 type ArticleInfo struct {
-	slug  string
-	title string
+	Slug  string `json:"slug"`
+	Title string `json:"title"`
 }
 
 func main() {
@@ -41,8 +41,8 @@ func main() {
 	if isLocal {
 		fmt.Println("local")
 		ai := ArticleInfo{
-			slug:  *slug,
-			title: *title,
+			Slug:  *slug,
+			Title: *title,
 		}
 		localController(ai)
 		return
@@ -87,21 +87,18 @@ func localController(ai ArticleInfo) {
 
 // controller は、API Gateway / AWS Lambda 上での実行処理を行う。
 func controller(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	slug := request.PathParameters["slug"]
-	if slug == "" {
+	var ai ArticleInfo
+	if err := json.Unmarshal([]byte(request.Body), &ai); err != nil {
+		return responseBadRequestError(err)
+	}
+
+	if ai.Slug == "" {
 		err := fmt.Errorf("slug is empty")
 		return responseBadRequestError(err)
 	}
-
-	title := request.PathParameters["title"]
-	if slug == "" {
+	if ai.Title == "" {
 		err := fmt.Errorf("title is empty")
 		return responseBadRequestError(err)
-	}
-
-	ai := ArticleInfo{
-		slug:  slug,
-		title: title,
 	}
 
 	if err := useCase(ai); err != nil {
@@ -128,7 +125,7 @@ func useCase(ai ArticleInfo) error {
 		return err
 	}
 
-	t := fmt.Sprintf("新しいブログ記事を投稿しました🐣\n\n「%s」\n%s%s", ai.title, os.Getenv("BLOG_URL"), ai.slug)
+	t := fmt.Sprintf("新しいブログ記事を投稿しました🐣\n\n「%s」\n%s%s", ai.Title, os.Getenv("BLOG_URL"), ai.Slug)
 	if _, err := tweet(c, t); err != nil {
 		return err
 	}
