@@ -81,6 +81,8 @@ func localController(ai ArticleInfo) {
 	if err := useCase(ai); err != nil {
 		fmt.Println(err.Error())
 	}
+
+	fmt.Println("tweetしました。")
 }
 
 // controller は、API Gateway / AWS Lambda 上での実行処理を行う。
