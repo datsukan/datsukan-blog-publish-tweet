@@ -110,10 +110,6 @@ func controller(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRe
 
 // useCase は、アプリケーションのIFに依存しないメインの処理を行う。
 func useCase(ai ArticleInfo) error {
-	if err := godotenv.Load(); err != nil {
-		return err
-	}
-
 	in := &gotwi.NewClientInput{
 		AuthenticationMethod: gotwi.AuthenMethodOAuth1UserContext,
 		OAuthToken:           os.Getenv("GOTWI_ACCESS_TOKEN"),
