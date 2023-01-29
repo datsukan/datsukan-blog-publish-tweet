@@ -15,6 +15,7 @@ import (
 
 // ArticleInfo は、記事情報を定義した構造体。
 type ArticleInfo struct {
+	Token string `json:"token"`
 	Slug  string `json:"slug"`
 	Title string `json:"title"`
 }
@@ -80,6 +81,10 @@ func localController(ai ArticleInfo) {
 
 // controller は、API Gateway / AWS Step Functions / AWS Lambda 上での実行処理を行う。
 func controller(input ArticleInfo) error {
+	if input.Token != os.Getenv("API_TOKEN") {
+		return fmt.Errorf("unauthorized access")
+	}
+
 	if input.Slug == "" {
 		return fmt.Errorf("slug is empty")
 	}
