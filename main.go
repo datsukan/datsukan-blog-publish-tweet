@@ -2,24 +2,16 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/joho/godotenv"
 	"github.com/michimani/gotwi"
 	"github.com/michimani/gotwi/tweet/managetweet"
 	"github.com/michimani/gotwi/tweet/managetweet/types"
 )
-
-// ErrorResponse は異常系のレスポンスを定義した構造体
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Message string `json:"message"`
-}
 
 // ArticleInfo は、記事情報を定義した構造体。
 type ArticleInfo struct {
@@ -38,6 +30,7 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
+
 	if isLocal {
 		fmt.Println("local")
 		ai := ArticleInfo{
@@ -85,27 +78,20 @@ func localController(ai ArticleInfo) {
 	fmt.Println("tweetしました。")
 }
 
-// controller は、API Gateway / AWS Lambda 上での実行処理を行う。
-func controller(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	var ai ArticleInfo
-	if err := json.Unmarshal([]byte(request.Body), &ai); err != nil {
-		return responseBadRequestError(err)
+// controller は、API Gateway / AWS Step Functions / AWS Lambda 上での実行処理を行う。
+func controller(input ArticleInfo) error {
+	if input.Slug == "" {
+		return fmt.Errorf("slug is empty")
+	}
+	if input.Title == "" {
+		return fmt.Errorf("title is empty")
 	}
 
-	if ai.Slug == "" {
-		err := fmt.Errorf("slug is empty")
-		return responseBadRequestError(err)
-	}
-	if ai.Title == "" {
-		err := fmt.Errorf("title is empty")
-		return responseBadRequestError(err)
+	if err := useCase(input); err != nil {
+		return err
 	}
 
-	if err := useCase(ai); err != nil {
-		return responseInternalServerError(err)
-	}
-
-	return responseSuccess()
+	return nil
 }
 
 // useCase は、アプリケーションのIFに依存しないメインの処理を行う。
@@ -141,58 +127,4 @@ func tweet(c *gotwi.Client, text string) (string, error) {
 	}
 
 	return gotwi.StringValue(res.Data.ID), nil
-}
-
-// responseBadRequestError は、リクエスト不正のレスポンスを生成する。
-func responseBadRequestError(rerr error) (events.APIGatewayProxyResponse, error) {
-	b := ErrorResponse{
-		Error:   "bad request",
-		Message: rerr.Error(),
-	}
-	jb, err := json.Marshal(b)
-	if err != nil {
-		r := events.APIGatewayProxyResponse{
-			StatusCode: 500,
-			Body:       err.Error(),
-		}
-		return r, nil
-	}
-	body := string(jb)
-
-	r := events.APIGatewayProxyResponse{
-		StatusCode: 400,
-		Body:       body,
-	}
-	return r, nil
-}
-
-// responseInternalServerError は、システムエラーのレスポンスを生成する。
-func responseInternalServerError(rerr error) (events.APIGatewayProxyResponse, error) {
-	b := ErrorResponse{
-		Error:   "internal server error",
-		Message: rerr.Error(),
-	}
-	jb, err := json.Marshal(b)
-	if err != nil {
-		r := events.APIGatewayProxyResponse{
-			StatusCode: 500,
-			Body:       err.Error(),
-		}
-		return r, nil
-	}
-	body := string(jb)
-
-	r := events.APIGatewayProxyResponse{
-		StatusCode: 500,
-		Body:       body,
-	}
-	return r, nil
-}
-
-// responseSuccess は、処理成功時のレスポンスを生成する。
-func responseSuccess() (events.APIGatewayProxyResponse, error) {
-	r := events.APIGatewayProxyResponse{
-		StatusCode: 200,
-	}
-	return r, nil
 }
